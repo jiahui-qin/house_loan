@@ -193,7 +193,7 @@
                 var interestAmount = columns[4].textContent.trim();
                 var remainingAmount = columns[5].textContent.trim();
 
-                icsContent += 'BEGIN:VEVENT\nSUMMARY:' + '第' + period + '期还款\nDESCRIPTION:' +
+                icsContent += 'BEGIN:VEVENT\nSUMMARY:' + '第' + period + '期还款'+repaymentAmount+'CNY\nDESCRIPTION:' +
                     '本期还款日期:' + repaymentDate + ', ' +
                     '本月还款总额:' + repaymentAmount + ', ' +
                     '本期偿还本金额度:' + principalAmount + ', ' +
