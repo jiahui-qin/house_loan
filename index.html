@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>房贷计算器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #calculator {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #4caf50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>房贷计算器</h1>
+    <div id="calculator">
+        <label for="accumulationFundLoanAmount">公积金贷款金额（万元）:</label>
+        <input type="number" id="accumulationFundLoanAmount" placeholder="公积金贷款金额" required>
+
+        <label for="businessLoanAmount">商业贷款金额（万元）:</label>
+        <input type="number" id="businessLoanAmount" placeholder="商业贷款金额" required>
+
+        <label for="accumulationFundInterestRate">公积金贷款利率（%）:</label>
+        <input type="number" id="accumulationFundInterestRate" placeholder="公积金贷款利率" required>
+
+        <label for="businessInterestRate">商业贷款利率（%）:</label>
+        <input type="number" id="businessInterestRate" placeholder="商业贷款利率" required>
+
+        <label for="loanTerm">贷款期限（年）:</label>
+        <input type="number" id="loanTerm" placeholder="贷款期限" required>
+
+        <label for="startDate">开始还贷日期:</label>
+        <input type="date" id="startDate" required>
+
+        <label for="repaymentMethod">还款方式:</label>
+        <select id="repaymentMethod">
+            <option value="equalInstallment">等额本息</option>
+            <option value="equalPrincipal">等额本金</option>
+        </select>
+
+        <button onclick="calculateLoan()">计算</button>
+
+        <h2>计算结果</h2>
+        <p id="resultTable"></p>
+        <a id="downloadLink" style="display: none;" download="loan_schedule.ics">下载ICS文件</a>
+    </div>
+
+    <script>
+        function calculateLoan() {
+            var accumulationFundLoanAmount = parseFloat(document.getElementById('accumulationFundLoanAmount').value) *
+                10000;
+            var businessLoanAmount = parseFloat(document.getElementById('businessLoanAmount').value) * 10000;
+            var accumulationFundInterestRate = parseFloat(document.getElementById('accumulationFundInterestRate')
+                .value);
+            var businessInterestRate = parseFloat(document.getElementById('businessInterestRate').value);
+            var loanTerm = parseFloat(document.getElementById('loanTerm').value);
+            var startDate = new Date(document.getElementById('startDate').value);
+            var repaymentMethod = document.getElementById('repaymentMethod').value;
+
+            var totalLoanAmount = accumulationFundLoanAmount + businessLoanAmount;
+            var weightedAverageInterestRate = (accumulationFundLoanAmount * accumulationFundInterestRate +
+                businessLoanAmount * businessInterestRate) / totalLoanAmount;
+
+            var monthlyInterestRate = weightedAverageInterestRate / 100 / 12;
+            var numberOfPayments = loanTerm * 12;
+
+            var monthlyPayment, totalPayment;
+            var remainingLoanAmount = totalLoanAmount;
+
+            var resultTable =
+                '<table border="1"><tr><th>期数</th><th>还款日期</th><th>本月还款额（元）</th><th>本期偿还本金额度（元）</th><th>本期偿还利息（元）</th><th>剩余贷款额（元）</th></tr>';
+
+            if (repaymentMethod === 'equalInstallment') {
+                // 等额本息计算
+                monthlyPayment = (totalLoanAmount * monthlyInterestRate) / (1 - Math.pow(1 + monthlyInterestRate, -
+                    numberOfPayments));
+                totalPayment = monthlyPayment * numberOfPayments;
+
+                for (var i = 1; i <= numberOfPayments; i++) {
+                    startDate.setMonth(startDate.getMonth() + 1);
+
+                    var interestPayment = remainingLoanAmount * monthlyInterestRate;
+                    var principalPayment = monthlyPayment - interestPayment;
+
+                    remainingLoanAmount -= principalPayment;
+
+                    resultTable += '<tr>';
+                    resultTable += '<td>' + i + '</td>';
+                    resultTable += '<td>' + formatDate(startDate) + '</td>';
+                    resultTable += '<td>' + monthlyPayment.toFixed(2) + '</td>';
+                    resultTable += '<td>' + principalPayment.toFixed(2) + '</td>';
+                    resultTable += '<td>' + interestPayment.toFixed(2) + '</td>';
+                    resultTable += '<td>' + remainingLoanAmount.toFixed(2) + '</td>';
+                    resultTable += '</tr>';
+                }
+            } else if (repaymentMethod === 'equalPrincipal') {
+                // 等额本金计算
+                var principalPayment = totalLoanAmount / numberOfPayments;
+                totalPayment = 0;
+
+                for (var j = 1; j <= numberOfPayments; j++) {
+                    startDate.setMonth(startDate.getMonth() + 1);
+
+                    var interestPayment = remainingLoanAmount * monthlyInterestRate;
+                    monthlyPayment = principalPayment + interestPayment;
+
+                    remainingLoanAmount -= principalPayment;
+                    totalPayment += monthlyPayment;
+
+                    resultTable += '<tr>';
+                    resultTable += '<td>' + j + '</td>';
+                    resultTable += '<td>' + formatDate(startDate) + '</td>';
+                    resultTable += '<td>' + monthlyPayment.toFixed(2) + '</td>';
+                    resultTable += '<td>' + principalPayment.toFixed(2) + '</td>';
+                    resultTable += '<td>' + interestPayment.toFixed(2) + '</td>';
+                    resultTable += '<td>' + remainingLoanAmount.toFixed(2) + '</td>';
+                    resultTable += '</tr>';
+                }
+            }
+
+            resultTable += '</table>';
+            document.getElementById('resultTable').innerHTML = resultTable;
+
+            // 生成ICS文件并提供下载链接
+            generateICSFile(resultTable);
+        }
+
+        function formatDate(date) {
+            var year = date.getFullYear();
+            var month = (date.getMonth() + 1).toString().padStart(2, '0');
+            var day = date.getDate().toString().padStart(2, '0');
+            return year + '-' + month + '-' + day;
+        }
+
+        function generateICSFile(resultTable) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(resultTable, 'text/html');
+            var rows = doc.querySelectorAll('table tr');
+
+            var icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\n';
+
+            for (var i = 1; i < rows.length; i++) {
+                var columns = rows[i].querySelectorAll('td');
+
+                var period = columns[0].textContent.trim();
+                var repaymentDate = columns[1].textContent.trim();
+                var repaymentAmount = columns[2].textContent.trim();
+                var principalAmount = columns[3].textContent.trim();
+                var interestAmount = columns[4].textContent.trim();
+                var remainingAmount = columns[5].textContent.trim();
+
+                icsContent += 'BEGIN:VEVENT\nSUMMARY:' + '第' + period + '期还款\nDESCRIPTION:' +
+                    '本期还款日期:' + repaymentDate + ', ' +
+                    '本月还款总额:' + repaymentAmount + ', ' +
+                    '本期偿还本金额度:' + principalAmount + ', ' +
+                    '本期偿还利息:' + interestAmount + ', ' +
+                    '剩余贷款额:' + remainingAmount + '\nDTSTART;TZID=Asia/Shanghai:' + repaymentDate.replace(/-/g, '') +
+                    'T000000\nEND:VEVENT\n';
+            }
+
+            icsContent += 'END:VCALENDAR\n';
+
+            var blob = new Blob([icsContent], {
+                type: 'text/calendar;charset=utf-8'
+            });
+            var downloadLink = document.getElementById('downloadLink');
+            downloadLink.href = window.URL.createObjectURL(blob);
+            downloadLink.setAttribute('download', 'loan_schedule.ics');
+            downloadLink.style.display = 'inline-block';
+            downloadLink.click();
+        }
+    </script>
+</body>
+
+</html>
